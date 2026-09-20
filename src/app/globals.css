@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-concrete-50 text-concrete-900 antialiased;
+}
+
+::selection {
+  @apply bg-amber-500/30;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: theme('colors.concrete.300');
+  border-radius: 9999px;
+}
