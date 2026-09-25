@@ -1,0 +1,8 @@
+{
+  "name": "mybloomhome",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test proof/*.test.mjs"
+  }
+}
