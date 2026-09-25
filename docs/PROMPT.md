@@ -1,10 +1,10 @@
 # Build Prompt: Construction Site Store Management (QR)
 
-**Version 3**: adds Smart Category and the build protocol. Every module is built under [`PROTOCOL.md`](PROTOCOL.md): Design → Isolate → Build → Prove, checked by `npm run prove`.
+**Version 3.1**: adds Smart Category and the build protocol, and fixes 16 defects found in review (see the review log). Every module is built under [`PROTOCOL.md`](PROTOCOL.md): Design → Isolate → Build → Prove, checked by `npm run prove`.
 
 | Module | Rules | Proof |
 |---|---|---|
-| Stock ledger | LED-1…11 (section 3) | `modules/ledger/` |
+| Stock ledger | LED-1…12 (section 3) | `modules/ledger/` |
 | Smart category | SC-1…9 (section 2.A1) | `modules/smart-category/` |
 
 ---
@@ -81,13 +81,21 @@ When someone types or imports an item name, the app suggests a category and pre-
 - **Variance** = counted − system quantity **at the moment the shelf was counted**, not at the moment the count is approved. This way, issues posted between counting and approval are not mistaken for losses.
 - Approved variances post as count-adjustment entries.
 
-## 3. Inventory rules (must hold; proven in `modules/ledger/`, LED-1…11)
+## 3. Inventory rules (must hold; proven in `modules/ledger/`, LED-1…12)
 1. **Append-only ledger.** Every document writes rows to `stock_ledger` and no row is ever updated or deleted. Mistakes are fixed with **reversal** documents. On-hand stock is a cached balance, and replaying the ledger must always reproduce it.
 2. **Atomic documents.** A multi-line document posts completely or not at all.
 3. **No negative stock** by default (an admin setting can allow it per store). Postgres enforces this by locking the affected balance rows (`SELECT … FOR UPDATE`) and checking them in the same transaction as the insert, so two storekeepers can't both issue the last 10 bags.
-4. **Idempotency.** Every document carries a client-generated UUID key with a unique constraint. Re-sending the same document returns the original result and never posts it twice. This is required for offline retries.
+4. **Idempotency.** Every document carries a client-generated UUID key with a unique constraint. Re-sending the same document returns the original result and never posts it twice. This is required for offline retries. Store a hash of the payload with the key: the **same key with different content is rejected** (`KEY_REUSED`), never silently ignored.
 5. **Exact numbers.** Quantities are stored as `NUMERIC(18,4)` in the item's base unit, and money as `NUMERIC(18,4)`. Floating-point types are never used for quantities or money.
-6. **Valuation: weighted-average cost** per item per store. Receipts add their accepted quantity × unit cost. Outbound movements go out at the current average. Returns come back at the cost they were issued at. Transfers carry their value through `TRANSIT`.
+6. **Valuation: weighted-average cost** per item per store. Receipts add their accepted quantity × unit cost. Outbound movements go out at the current average. Returns come back at the cost they were issued at. Transfers carry their value through `TRANSIT`. **A reversed receipt also leaves at the current average.** The gap from its original cost is posted as a `priceVariance` to a price-difference account. Without this, the remaining stock's average can end up above anything actually paid.
+7. **Reversals.** A document is reversed once at most. A reversal is never itself reversed; post the document again instead. An issue with standing returns can't be reversed until those returns are reversed.
+8. **Returns.** The **total** returned against an issue is capped at what it issued, across all return documents. A reversed issue accepts no returns. Returns go back to the store and bin they came from.
+9. **Input validation** happens before anything is written:
+   - unit cost is required and ≥ 0;
+   - 0 ≤ rejected ≤ received;
+   - quantities are > 0;
+   - a transfer needs a destination other than its own store;
+   - users cannot post into system locations. Quarantine stock leaves only by a write-off adjustment.
 
 ## 3a. Build protocol
 Every module is built under [`PROTOCOL.md`](PROTOCOL.md):
@@ -148,6 +156,10 @@ Each rule in section 3 needs an automated test on the real database, mirroring `
 - [ ] A reversal restores stock and leaves the original rows untouched
 - [ ] A count of 97 against 100, with an issue of 10 posted before approval, gives a variance of **−3** and **87** on hand
 - [ ] Cached balances equal a full replay of the ledger
+- [ ] Randomised test of 3,000 mixed operations across 30 seeds: replay matches, stock is never negative, the average stays within the range of costs paid, returns never exceed issues, and nothing is reversed twice
+- [ ] Two returns of 15 against an issue of 20: the second is rejected. A return against a reversed issue is rejected.
+- [ ] Reusing an idempotency key with different content → `KEY_REUSED`
+- [ ] Receive 10 @ 1 and 10 @ 100, issue 5, reverse the first receipt → average stays **50.5**, with a price variance of 495
 - [ ] **Concurrency:** two simultaneous issues of 60 against 100 on hand → exactly one succeeds *(DB-level test)*
 - [ ] Values that aren't exact in binary floating point still balance: three issues of 0.07 m³ from 1 m³ leave exactly **0.79**
 - [ ] **Smart Category:** all 65 golden names classify correctly, including 15 traps (binding wire, MS pipe, solvent cement, grinder disc…)
@@ -166,12 +178,31 @@ Each rule in section 3 needs an automated test on the real database, mirroring `
 2. Requests and approvals, returns, transfers through transit, tool checkout, cost codes.
 3. Stock counts, reports and exports, offline sync with the conflict queue, alerts.
 
+## Known limits (stated upfront)
+- **Smart Category reads Latin-script names only.** A name like "सीमेंट" returns `unknown`, and the user picks the category, which is then saved as an override. Keyword lists for other languages are needed if invoices come in other scripts.
+- **Concurrency is not proven yet.** The reference model runs on a single thread. The row-locking rule (§3.3) needs its planned database-level test once Postgres exists.
+- **The fingerprint depends on key order.** It is JSON of the document, so a client must resend the identical payload. In production, hash a canonical form.
+- The ledger and classifier are **reference models**. The production app still has to be built against them (Phase 1).
+
 ## Open decisions (defaults assumed above)
 - Web PWA (assumed) or native app?
 - Integrations with an ERP or accounting system (Tally, QuickBooks, SAP)?
 - Currency, languages, and whether to add GST/VAT to GRN valuation.
 
 ---
+
+## Review log: v3 → v3.1
+Review 2 reproduced every suspected defect before fixing it. It found 12 bugs in the code and 4 in the tooling and tests. The full table is in [`PROTOCOL.md`](PROTOCOL.md#review-2-reproduce-first-then-fix). The most serious:
+- Returns could exceed issues, or follow a reversal, which **created stock from nothing**.
+- Double reversals.
+- A reused key **silently lost a document**.
+- A GRN with no unit cost made the stock value `NaN`.
+- Reversing a receipt **pushed the average cost to 149.5 when only 1 and 100 had been paid**.
+
+Proof strength after the fixes:
+- Ledger: 19/19 mutations caught, 12/12 rules tested.
+- Smart category: 14/14 mutations caught, 9/9 rules tested.
+- The randomised ledger test fails on the old code and passes on the new.
 
 ## Review log: v2 → v3
 | # | Change | How it's checked |

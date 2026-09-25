@@ -9,7 +9,7 @@ import { readdirSync, readFileSync, existsSync, mkdtempSync, cpSync, writeFileSy
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const modulesDir = join(root, 'modules');
@@ -27,7 +27,8 @@ const runTests = (dir) => {
 let failed = 0;
 const report = [];
 
-for (const name of readdirSync(modulesDir).filter((n) => !only || n === only)) {
+for (const name of readdirSync(modulesDir, { withFileTypes: true })
+  .filter((d) => d.isDirectory() && (!only || d.name === only)).map((d) => d.name)) {
   const dir = join(modulesDir, name);
   const files = readdirSync(dir);
   const src = files.filter((f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs'));
@@ -50,8 +51,14 @@ for (const name of readdirSync(modulesDir).filter((n) => !only || n === only)) {
   const leaks = [];
   for (const f of src) {
     const code = readFileSync(join(dir, f), 'utf8');
-    for (const m of code.matchAll(/(?:^|\n)\s*(?:import|export)[^'"]*from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
-      const spec = m[1] ?? m[2];
+    // Static (`import x from`), side-effect (`import 'x'`), re-export and
+    // dynamic imports. A dynamic import of a computed path is itself a leak.
+    const specs = [
+      ...[...code.matchAll(/(?:^|\n|;)\s*(?:import|export)\b[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]/g)].map((m) => m[1]),
+      ...[...code.matchAll(/(?:^|\n|;)\s*import\s*['"]([^'"]+)['"]/g)].map((m) => m[1]),
+      ...[...code.matchAll(/\bimport\s*\(\s*([^)]*)\)/g)].map((m) => /^['"][^'"]+['"]$/.test(m[1].trim()) ? m[1].trim().slice(1, -1) : `<computed ${m[1].trim()}>`),
+    ];
+    for (const spec of specs) {
       if (!spec.startsWith('./') || spec.includes('..')) leaks.push(`${f} → ${spec}`);
     }
     if (/\b(?:process|require|fetch|localStorage|indexedDB|Date\.now|Math\.random)\b/.test(code)) {
@@ -90,7 +97,13 @@ for (const name of readdirSync(modulesDir).filter((n) => !only || n === only)) {
       const code = readFileSync(target, 'utf8');
       if (!code.includes(m.find)) { survivors.push(`${m.rule} stale (text not found)`); continue; }
       writeFileSync(target, code.replace(m.find, m.replace));
-      if (runTests(tmp).ok) survivors.push(`${m.rule} survived: ${m.find}`);
+      // A mutation that stops the module loading would "fail the tests" for the
+      // wrong reason. It must still load, so a caught mutation means a test
+      // noticed the changed behaviour.
+      const loads = src.every((f) => spawnSync(process.execPath,
+        ['--input-type=module', '-e', `await import(${JSON.stringify(pathToFileURL(join(tmp, f)).href)})`]).status === 0);
+      if (!loads) survivors.push(`${m.rule} invalid (module no longer loads): ${m.find}`);
+      else if (runTests(tmp).ok) survivors.push(`${m.rule} survived: ${m.find}`);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

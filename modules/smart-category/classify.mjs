@@ -10,9 +10,21 @@ const PATTERN_WEIGHT = 2;
 const AUTO_MIN_SCORE = 2;
 const AUTO_MIN_RATIO = 2;
 
-// SC-1: one canonical spelling; idempotent.
+// SC-1: one canonical spelling; idempotent. The steps can interact (one may
+// expose a pattern an earlier step has already passed), so they are repeated
+// until the text stops changing — which makes idempotence hold by construction.
 export function normalize(name) {
-  return String(name ?? '')
+  let prev;
+  let text = String(name ?? '');
+  for (let i = 0; i < 8 && text !== prev; i++) {
+    prev = text;
+    text = normalizeOnce(text);
+  }
+  return text;
+}
+
+function normalizeOnce(name) {
+  return name
     .toLowerCase()
     .replace(/sq\.?\s*mm\b|sqmm\b|mm2\b|mm²/g, ' sq mm ')
     .replace(/(\d)\s*(mm|kg|m3|inch|in|ltr|l)\b/g, '$1 $2') // 12mm -> 12 mm
@@ -54,12 +66,11 @@ export function extractAttributes(text) {
   if ((m = text.match(/(?:^| )(\d+(?:\.\d+)?) mm(?= |$)/))) a.sizeMm = Number(m[1]);
   if ((m = text.match(/(?:^| )(\d+(?:\.\d+)?(?:\/\d+)?) inch(?= |$)/))) a.sizeInch = m[1];
   if ((m = text.match(/(\d+(?:\.\d+)?) sq mm/))) a.crossSectionSqMm = Number(m[1]);
-  if ((m = text.match(/\bfe ?(\d{3})(d?)\b/))) a.steelGrade = `Fe${m[1]}${m[2].toUpperCase()}`;
-  if ((m = text.match(/\b(opc|ppc|psc)\b(?: ?(?:grade )?(33|43|53)\b)?/))) {
-    a.cementType = m[1].toUpperCase();
-    if (m[2]) a.cementGrade = Number(m[2]);
-  } else if ((m = text.match(/\b(33|43|53) grade\b/))) {
-    a.cementGrade = Number(m[1]);
+  if ((m = text.match(/\bfe ?(\d{3})(?: ?(d))?\b/))) a.steelGrade = `Fe${m[1]}${(m[2] ?? '').toUpperCase()}`;
+  // Type and grade are read independently: "OPC 53", "53 grade OPC", "OPC grade 43".
+  if ((m = text.match(/\b(opc|ppc|psc)\b/))) a.cementType = m[1].toUpperCase();
+  if ((m = text.match(/\b(?:opc|ppc|psc) (?:grade )?(33|43|53)\b|\b(33|43|53) grade\b/))) {
+    a.cementGrade = Number(m[1] ?? m[2]);
   }
   if ((m = text.match(/\bm ?(7\.5|10|15|20|25|30|35|40|45|50|60)\b/))) a.concreteGrade = `M${m[1]}`;
   if ((m = text.match(/(?:^| )(\d+(?:\.\d+)?) kg(?= |$)/))) a.packKg = Number(m[1]);

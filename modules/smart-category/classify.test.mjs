@@ -15,6 +15,14 @@ test('SC-1 normalization is canonical and idempotent', () => {
     assert.equal(normalize(normalize(name)), normalize(name), name);
   }
   assert.equal(normalize(null), '');
+  // Randomised: idempotent for arbitrary strings built from tricky characters.
+  const alphabet = ['1', '2', '5', '.', ' ', 'mm', 'sq', 'Sq.', 'kg', '"', '/', '-', 'x', 'M', 'Fe', 'l', 'in', '²', ',', '..'];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+  for (let i = 0; i < 5000; i++) {
+    const s = Array.from({ length: 1 + Math.floor(rnd() * 12) }, () => alphabet[Math.floor(rnd() * alphabet.length)]).join('');
+    assert.equal(normalize(normalize(s)), normalize(s), JSON.stringify(s));
+  }
 });
 
 test('SC-2 longest match wins across categories', () => {
@@ -71,6 +79,11 @@ test('SC-5 attributes are extracted, and sq mm is not a size', () => {
   assert.deepEqual(extractAttributes(normalize('12mm TMT Fe500D')), { sizeMm: 12, steelGrade: 'Fe500D' });
   assert.deepEqual(extractAttributes(normalize('OPC 53 Grade Cement 50kg')),
                    { cementType: 'OPC', cementGrade: 53, packKg: 50 });
+  for (const n of ['53 Grade OPC cement', 'OPC grade 53', 'opc 53']) {
+    assert.deepEqual(extractAttributes(normalize(n)), { cementType: 'OPC', cementGrade: 53 }, n);
+  }
+  assert.equal(extractAttributes(normalize('TMT Fe-500 D 12mm')).steelGrade, 'Fe500D');
+  assert.equal(extractAttributes(normalize('TMT Fe 550 dia 12')).steelGrade, 'Fe550', '"dia" is not grade D');
   assert.deepEqual(extractAttributes(normalize('RMC M25')), { concreteGrade: 'M25' });
   assert.deepEqual(extractAttributes(normalize('PCC M7.5')), { concreteGrade: 'M7.5' });
   const cable = extractAttributes(normalize('2.5 sq.mm FR copper wire'));

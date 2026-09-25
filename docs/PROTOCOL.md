@@ -56,6 +56,11 @@ npm run prove                    # all four gates for every module
 node scripts/prove.mjs ledger    # one module
 ```
 
+## Rules for proofs
+- A new test must be shown to **fail on the bug it guards against** before its fix is accepted.
+- Every module keeps at least one **randomised invariant test** with a fixed seed, so any failure can be reproduced.
+- Mutations must leave the module **loadable**. A syntax-breaking mutation is reported as `invalid`, not `caught`.
+
 ## When a gate fails
 Fix the cause, not the gate. Never weaken a test, delete a mutation or rename a rule to get to green. If a rule was wrong, change it in DESIGN.md first, then in the tests, then in the code, in that order.
 
@@ -66,3 +71,30 @@ Fix the cause, not the gate. Never weaken a test, delete a mutation or rename a 
 | Prove: rules | Rule IDs in the smart-category design doc were in the wrong format, so no rules were recognised | Rewrote them as `**SC-n**` |
 | Build (golden set) | "Wire nails" tied between electrical and hardware | Added the phrase `wire nails` |
 | Design review | Longest-match only applied within one category, so "grinder disc" would still score as a tool | Changed SC-2 to a single longest-match pass across all categories |
+
+### Review 2: reproduce first, then fix
+Each finding was first reproduced by a probe script, then fixed, then locked in with a regression test and a mutation.
+
+| # | Found by | Defect (before the fix) | Rule |
+|---|---|---|---|
+| 1 | probe | Two returns of 15 against an issue of 20 were both accepted, so stock was created from nothing | LED-9 |
+| 2 | probe | A return was accepted after its issue had been reversed (+20 phantom stock) | LED-9 |
+| 3 | probe | The same document could be reversed twice | LED-1 |
+| 4 | probe | Re-using a key for **different** content silently returned the old result, losing the new document | LED-4 |
+| 5 | probe | A GRN with no unit cost made the stock value `NaN` | LED-12 |
+| 6 | probe | A negative "rejected" quantity added stock that was never delivered | LED-12 |
+| 7 | probe | A transfer with no destination sent stock to a store named "undefined" | LED-12 |
+| 8 | probe | Users could post straight into `TRANSIT` or `QUARANTINE` | LED-12 |
+| 9 | probe | A count whose adjustment failed was closed anyway, and a retry threw an error | LED-10 |
+| 10 | **randomised test** | Reversing a cheap receipt after mixing costs pushed the average to 149.5 when only 1 and 100 had been paid | LED-6 |
+| 11 | **randomised test** | `normalize` was not idempotent (`'mm5lin .2 sq'`) | SC-1 |
+| 12 | probe | "53 Grade OPC" lost its grade; "Fe-500 D" lost its D | SC-5 |
+| 13 | code reading | Every line of a document shared one `seq` by accident; now there is an explicit per-document sequence | LED-10 |
+| 14 | attack on prover | A mutation that stopped the module loading counted as "caught" | tooling |
+| 15 | attack on prover | A side-effect `import 'pkg'` got past the isolation check | tooling |
+| 16 | meta-check | The first version of the randomised test **passed on the buggy ledger**. It relied on the ledger's own bookkeeping, so it was rewritten to keep its own independent records. It now fails on the old code and passes on the new. | LED-11 |
+
+Lessons now built into the protocol:
+- **Test the test.** Run every new proof against the known-buggy version, and require it to fail.
+- **Invariants over examples.** Rows 10 and 11 were found only by randomised checks. Hand-written examples had passed.
+- **Attack the gatekeeper.** The prover is code too, and it needs its own adversarial cases.
