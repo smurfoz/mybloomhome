@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Site Inventory</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%23e07a1f%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Site Inventory</div>
+    <label class="whoami">Recorded by
+      <input id="recordedBy" placeholder="Your name" autocomplete="name">
+    </label>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-view="dashboard" class="active">Dashboard</button>
+    <button data-view="deliver">Receive delivery</button>
+    <button data-view="issue">Issue to installer</button>
+    <button data-view="return">Return</button>
+    <button data-view="stock">Stock</button>
+    <button data-view="installers">Installers</button>
+    <button data-view="projects">Projects</button>
+    <button data-view="log">Movement log</button>
+  </nav>
+
+  <main>
+    <!-- Dashboard -->
+    <section id="view-dashboard" class="view active">
+      <div class="tiles" id="tiles"></div>
+      <div class="grid2">
+        <div class="card">
+          <h2>Low stock</h2>
+          <div id="lowStock"></div>
+        </div>
+        <div class="card">
+          <h2>Latest recorded activity</h2>
+          <div id="recent"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Receive delivery -->
+    <section id="view-deliver" class="view">
+      <div class="card">
+        <h2>Receive delivery</h2>
+        <p class="hint">Scan or type each SKU/barcode and press Enter. Stock is booked in and a delivery record is created the moment you confirm. Re-sending the same supplier delivery note is ignored, so nothing gets counted twice.</p>
+        <form id="deliverForm" class="form-grid">
+          <label>Supplier <input name="supplier" list="supplierList" required></label>
+          <label>Delivery note / PO # <input name="external_ref" placeholder="e.g. DN-4471"></label>
+          <label>Delivered to project <select name="project_id" data-projects></select></label>
+          <label class="wide">Notes <input name="notes"></label>
+        </form>
+        <div data-lines="deliver"></div>
+        <div class="actions"><button class="primary" data-submit="deliver">Confirm delivery</button></div>
+      </div>
+    </section>
+
+    <!-- Issue -->
+    <section id="view-issue" class="view">
+      <div class="card">
+        <h2>Issue to installer</h2>
+        <p class="hint">Stock leaves the store and is logged against the installer and project as soon as you confirm. You can't issue more than is on hand.</p>
+        <form id="issueForm" class="form-grid">
+          <label>Installer <select name="installer_id" data-installers required></select></label>
+          <label>Project <select name="project_id" data-projects></select></label>
+          <label class="wide">Notes <input name="notes" placeholder="e.g. Level 2 bathrooms"></label>
+        </form>
+        <div data-lines="issue"></div>
+        <div class="actions"><button class="primary" data-submit="issue">Confirm issue</button></div>
+      </div>
+    </section>
+
+    <!-- Return -->
+    <section id="view-return" class="view">
+      <div class="card">
+        <h2>Return from installer</h2>
+        <p class="hint">Book unused material back into stock. Only items the installer currently holds can be returned.</p>
+        <form id="returnForm" class="form-grid">
+          <label>Installer <select name="installer_id" data-installers required></select></label>
+          <label>Project <select name="project_id" data-projects></select></label>
+          <label class="wide">Notes <input name="notes"></label>
+        </form>
+        <div id="returnHeld" class="held"></div>
+        <div data-lines="return"></div>
+        <div class="actions"><button class="primary" data-submit="return">Confirm return</button></div>
+      </div>
+    </section>
+
+    <!-- Stock -->
+    <section id="view-stock" class="view">
+      <div class="card">
+        <div class="row-between">
+          <h2>Stock on hand</h2>
+          <input id="stockFilter" type="search" placeholder="Filter items">
+        </div>
+        <div id="stockTable"></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h2>Add item</h2>
+          <form id="itemForm" class="form-grid">
+            <label>SKU <input name="sku" required></label>
+            <label>Barcode <input name="barcode"></label>
+            <label class="wide">Name <input name="name" required></label>
+            <label>Unit <input name="unit" placeholder="pcs, m, box, bag"></label>
+            <label>Category <input name="category"></label>
+            <label>Reorder level <input name="reorder_level" type="number" min="0" step="any"></label>
+            <div class="actions wide"><button class="primary">Add item</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Stock adjustment</h2>
+          <p class="hint">For stock-take corrections, damage or loss. Use a negative quantity to remove stock.</p>
+          <form id="adjustForm" class="form-grid">
+            <label>Item <select name="item_id" data-items required></select></label>
+            <label>Quantity (+/-) <input name="qty" type="number" step="any" required></label>
+            <label class="wide">Reason <input name="notes" required placeholder="e.g. Stock-take 30 Sep"></label>
+            <div class="actions wide"><button class="primary">Record adjustment</button></div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Installers -->
+    <section id="view-installers" class="view">
+      <div class="grid2">
+        <div class="card">
+          <h2>Installers</h2>
+          <div id="installerTable"></div>
+          <form id="installerForm" class="form-grid">
+            <label>Name <input name="name" required></label>
+            <label>Company <input name="company"></label>
+            <label>Phone <input name="phone"></label>
+            <div class="actions"><button class="primary">Add installer</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <h2 id="custodyTitle">Material held</h2>
+          <div id="custody"><p class="muted">Select an installer to see what they're holding.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Projects -->
+    <section id="view-projects" class="view">
+      <div class="card">
+        <h2>Projects</h2>
+        <div id="projectTable"></div>
+        <form id="projectForm" class="form-grid">
+          <label>Code <input name="code" required placeholder="e.g. BH-012"></label>
+          <label>Name <input name="name" required></label>
+          <label class="wide">Address <input name="address"></label>
+          <div class="actions"><button class="primary">Add project</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Log -->
+    <section id="view-log" class="view">
+      <div class="card">
+        <div class="row-between">
+          <h2>Movement log</h2>
+          <a id="csvLink" class="button" href="/api/movements.csv">Export CSV</a>
+        </div>
+        <form id="logFilter" class="filters">
+          <select name="type">
+            <option value="">All types</option>
+            <option>DELIVERY</option><option>ISSUE</option><option>RETURN</option><option>ADJUSTMENT</option>
+          </select>
+          <select name="item_id" data-items><option value="">All items</option></select>
+          <select name="installer_id" data-installers></select>
+          <select name="project_id" data-projects></select>
+          <label>From <input type="date" name="from"></label>
+          <label>To <input type="date" name="to"></label>
+        </form>
+        <div id="logTable"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="receipt">
+    <div id="receiptBody"></div>
+    <div class="actions">
+      <button onclick="window.print()">Print</button>
+      <button class="primary" onclick="this.closest('dialog').close()">Done</button>
+    </div>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <datalist id="supplierList"></datalist>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
