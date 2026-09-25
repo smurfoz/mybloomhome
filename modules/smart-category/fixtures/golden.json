@@ -1,0 +1,277 @@
+[
+ {
+  "name": "OPC 53 Grade Cement 50kg",
+  "category": "CEM"
+ },
+ {
+  "name": "PPC cement (Ultratech)",
+  "category": "CEM"
+ },
+ {
+  "name": "White Cement 1kg",
+  "category": "CEM"
+ },
+ {
+  "name": "Fly ash - bulk",
+  "category": "CEM"
+ },
+ {
+  "name": "RMC M25",
+  "category": "CON"
+ },
+ {
+  "name": "Ready Mix Concrete M-30 grade",
+  "category": "CON"
+ },
+ {
+  "name": "PCC M7.5",
+  "category": "CON"
+ },
+ {
+  "name": "M-Sand",
+  "category": "AGG"
+ },
+ {
+  "name": "20mm aggregate",
+  "category": "AGG"
+ },
+ {
+  "name": "40 mm Blue Metal Jelly",
+  "category": "AGG"
+ },
+ {
+  "name": "River sand (plastering)",
+  "category": "AGG"
+ },
+ {
+  "name": "GSB material",
+  "category": "AGG"
+ },
+ {
+  "name": "12mm TMT Fe500D",
+  "category": "STL"
+ },
+ {
+  "name": "TMT BAR 8 MM FE 550",
+  "category": "STL"
+ },
+ {
+  "name": "Binding wire 18 gauge",
+  "category": "STL",
+  "trap": "wire is also electrical"
+ },
+ {
+  "name": "MS Pipe 40mm heavy",
+  "category": "STL",
+  "trap": "pipe is also plumbing"
+ },
+ {
+  "name": "ISMB 200",
+  "category": "STL"
+ },
+ {
+  "name": "MS angle 50x50x6",
+  "category": "STL"
+ },
+ {
+  "name": "AAC Block 600x200x150",
+  "category": "MAS"
+ },
+ {
+  "name": "Red bricks (1st class)",
+  "category": "MAS"
+ },
+ {
+  "name": "Solid concrete block 6 inch",
+  "category": "MAS",
+  "trap": "concrete is also RMC"
+ },
+ {
+  "name": "Paver block 80mm",
+  "category": "MAS"
+ },
+ {
+  "name": "Shuttering ply 12mm film faced",
+  "category": "FRM"
+ },
+ {
+  "name": "Acrow props 3m",
+  "category": "FRM"
+ },
+ {
+  "name": "Cuplock vertical 3m",
+  "category": "FRM"
+ },
+ {
+  "name": "2.5 sq.mm FR copper wire (90m)",
+  "category": "ELE",
+  "trap": "sq mm must not become sizeMm"
+ },
+ {
+  "name": "4 core 16 sqmm armoured cable",
+  "category": "ELE"
+ },
+ {
+  "name": "MCB 32A DP",
+  "category": "ELE"
+ },
+ {
+  "name": "PVC conduit pipe 25mm",
+  "category": "ELE",
+  "trap": "pvc and pipe are plumbing words"
+ },
+ {
+  "name": "8 way DB box",
+  "category": "ELE"
+ },
+ {
+  "name": "CPVC pipe 1 inch",
+  "category": "PLB"
+ },
+ {
+  "name": "UPVC elbow 110mm",
+  "category": "PLB"
+ },
+ {
+  "name": "Ball valve 25 mm brass",
+  "category": "PLB"
+ },
+ {
+  "name": "SWR pipe 110mm",
+  "category": "PLB"
+ },
+ {
+  "name": "Solvent cement 250ml",
+  "category": "PLB",
+  "trap": "cement is also a binder"
+ },
+ {
+  "name": "Vitrified tiles 600x600",
+  "category": "FIN"
+ },
+ {
+  "name": "Wall putty 40kg",
+  "category": "FIN"
+ },
+ {
+  "name": "Tile adhesive 20kg",
+  "category": "FIN"
+ },
+ {
+  "name": "Gypsum board 12.5mm",
+  "category": "FIN"
+ },
+ {
+  "name": "Exterior emulsion paint 20L",
+  "category": "PNT"
+ },
+ {
+  "name": "Dr. Fixit waterproofing",
+  "category": "PNT"
+ },
+ {
+  "name": "Concrete admixture (plasticizer)",
+  "category": "PNT",
+  "trap": "concrete is also RMC"
+ },
+ {
+  "name": "Shutter oil",
+  "category": "PNT",
+  "trap": "oil is also fuel"
+ },
+ {
+  "name": "Anchor fastener 12x100",
+  "category": "HRD"
+ },
+ {
+  "name": "4 inch cutting disc",
+  "category": "HRD",
+  "trap": "cutting is also a tool word"
+ },
+ {
+  "name": "Wire nails 3 inch",
+  "category": "HRD",
+  "trap": "wire is also electrical"
+ },
+ {
+  "name": "Welding rod 3.15mm",
+  "category": "HRD",
+  "trap": "welding is also a machine"
+ },
+ {
+  "name": "Safety helmet (yellow)",
+  "category": "PPE"
+ },
+ {
+  "name": "Full body harness",
+  "category": "PPE"
+ },
+ {
+  "name": "Hand gloves - cotton",
+  "category": "PPE"
+ },
+ {
+  "name": "Angle grinder 4\" Bosch",
+  "category": "TLS",
+  "trap": "grinder vs grinding disc"
+ },
+ {
+  "name": "Needle vibrator 40mm",
+  "category": "TLS"
+ },
+ {
+  "name": "Concrete mixer machine 1 bag",
+  "category": "TLS",
+  "trap": "concrete is also RMC"
+ },
+ {
+  "name": "Measuring tape 5m",
+  "category": "TLS"
+ },
+ {
+  "name": "Diesel (HSD)",
+  "category": "FUL"
+ },
+ {
+  "name": "Hydraulic oil 68",
+  "category": "FUL"
+ },
+ {
+  "name": "Grease - bucket",
+  "category": "FUL"
+ },
+ {
+  "name": "Grinder disc 4 inch",
+  "category": "HRD",
+  "trap": "grinder is a tool"
+ },
+ {
+  "name": "PVC pipe 4 inch",
+  "category": "PLB"
+ },
+ {
+  "name": "Sand paper 120 grit",
+  "category": "HRD",
+  "trap": "sand is aggregate"
+ },
+ {
+  "name": "Hollow block 8 inch",
+  "category": "MAS"
+ },
+ {
+  "name": "Bitumen primer",
+  "category": "PNT"
+ },
+ {
+  "name": "Engine oil 15W40",
+  "category": "FUL"
+ },
+ {
+  "name": "GI pipe 25 mm",
+  "category": "PLB"
+ },
+ {
+  "name": "Plywood 18mm",
+  "category": "FRM"
+ }
+]

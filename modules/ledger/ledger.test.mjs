@@ -14,7 +14,7 @@ const grnCement = (l, key = 'k-grn') =>
   l.post({ key, type: 'GRN', store: 'S1',
            lines: [{ item: 'CEM-OPC53', received: 100, unitCost: 400 }] });
 
-test('acceptance flow: receive 100, issue 30, return 5 -> 75 on hand', () => {
+test('LED-ACC acceptance flow: receive 100, issue 30, return 5 -> 75 on hand', () => {
   const l = site();
   grnCement(l);
   const issue = l.post({ key: 'k-iss', type: 'ISSUE', store: 'S1',
@@ -25,7 +25,7 @@ test('acceptance flow: receive 100, issue 30, return 5 -> 75 on hand', () => {
   assert.equal(l.value('S1', 'CEM-OPC53'), 75 * 400);
 });
 
-test('GRN adds accepted quantity only (received - rejected)', () => {
+test('LED-7 GRN adds accepted quantity only (received - rejected)', () => {
   const l = site();
   l.post({ key: 'g', type: 'GRN', store: 'S1',
            lines: [{ item: 'CEM-OPC53', received: 100, rejected: 4, unitCost: 400 }] });
@@ -34,7 +34,7 @@ test('GRN adds accepted quantity only (received - rejected)', () => {
     lines: [{ item: 'CEM-OPC53', received: 5, rejected: 6, unitCost: 1 }] }), { code: 'BAD_QTY' });
 });
 
-test('issuing more than on hand is rejected and moves nothing', () => {
+test('LED-2 LED-3 issuing more than on hand is rejected and moves nothing', () => {
   const l = site();
   grnCement(l);
   const before = l.seq;
@@ -46,7 +46,7 @@ test('issuing more than on hand is rejected and moves nothing', () => {
   assert.equal(l.onHand('S1', 'CEM-OPC53'), 100);
 });
 
-test('offline retry with the same idempotency key does not double-post', () => {
+test('LED-4 offline retry with the same idempotency key does not double-post', () => {
   const l = site();
   grnCement(l);
   const a = l.post({ key: 'dev1-uuid-7', type: 'ISSUE', store: 'S1', lines: [{ item: 'CEM-OPC53', qty: 10 }] });
@@ -56,7 +56,7 @@ test('offline retry with the same idempotency key does not double-post', () => {
   assert.equal(l.onHand('S1', 'CEM-OPC53'), 90);
 });
 
-test('unit conversion: buy steel in tonnes, issue in kg', () => {
+test('LED-5 unit conversion: buy steel in tonnes, issue in kg', () => {
   const l = site();
   l.post({ key: 'g', type: 'GRN', store: 'S1',
            lines: [{ item: 'STL-TMT12', received: 2.5, uom: 't', unitCost: 60000 }] });
@@ -68,7 +68,7 @@ test('unit conversion: buy steel in tonnes, issue in kg', () => {
     lines: [{ item: 'STL-TMT12', qty: 1, uom: 'bag' }] }), { code: 'BAD_UOM' });
 });
 
-test('decimal quantities do not drift (0.1 m3 x 30)', () => {
+test('LED-5 decimal quantities do not drift (0.1 m3 x 30)', () => {
   const l = site();
   l.post({ key: 'g', type: 'GRN', store: 'S1', lines: [{ item: 'RMC-M25', received: 3, unitCost: 5000 }] });
   for (let i = 0; i < 30; i++) {
@@ -78,7 +78,17 @@ test('decimal quantities do not drift (0.1 m3 x 30)', () => {
   assert.equal(l.value('S1', 'RMC-M25'), 0);
 });
 
-test('weighted-average cost across two deliveries', () => {
+test('LED-5 values that are inexact in binary floating point still balance exactly', () => {
+  const l = site();
+  l.post({ key: 'g', type: 'GRN', store: 'S1', lines: [{ item: 'RMC-M25', received: 1, unitCost: 5000 }] });
+  for (let i = 0; i < 3; i++) {
+    l.post({ key: `i${i}`, type: 'ISSUE', store: 'S1', lines: [{ item: 'RMC-M25', qty: 0.07 }] });
+  }
+  assert.equal(l.onHand('S1', 'RMC-M25'), 0.79);            // 0.07 * 10000 = 700.0000000000001
+  for (const e of l.entries) assert.ok(Number.isInteger(e.qty), `scaled qty ${e.qty} is an integer`);
+});
+
+test('LED-6 weighted-average cost across two deliveries', () => {
   const l = site();
   grnCement(l);                                       // 100 @ 400
   l.post({ key: 'g2', type: 'GRN', store: 'S1',
@@ -88,7 +98,7 @@ test('weighted-average cost across two deliveries', () => {
   assert.equal(l.value('S1', 'CEM-OPC53'), 135 * 410);
 });
 
-test('damaged return goes to quarantine, not usable stock', () => {
+test('LED-9 damaged return goes to quarantine, not usable stock', () => {
   const l = site();
   grnCement(l);
   const iss = l.post({ key: 'i', type: 'ISSUE', store: 'S1', lines: [{ item: 'CEM-OPC53', qty: 20 }] });
@@ -100,7 +110,7 @@ test('damaged return goes to quarantine, not usable stock', () => {
     lines: [{ item: 'CEM-OPC53', qty: 21, issueId: iss.id }] }), { code: 'BAD_QTY' });
 });
 
-test('inter-site transfer holds stock and value in transit', () => {
+test('LED-8 inter-site transfer holds stock and value in transit', () => {
   const l = site();
   grnCement(l);
   l.post({ key: 't1', type: 'TRANSFER_OUT', store: 'S1', to: 'S2', lines: [{ item: 'CEM-OPC53', qty: 40 }] });
@@ -113,7 +123,7 @@ test('inter-site transfer holds stock and value in transit', () => {
   assert.equal(total, 100 * 400, 'value is conserved');
 });
 
-test('corrections are reversals; history is never edited', () => {
+test('LED-1 corrections are reversals; history is never edited', () => {
   const l = site();
   grnCement(l);
   const iss = l.post({ key: 'i', type: 'ISSUE', store: 'S1', lines: [{ item: 'CEM-OPC53', qty: 30 }] });
@@ -123,7 +133,7 @@ test('corrections are reversals; history is never edited', () => {
   assert.equal(l.entries.length, 3);
 });
 
-test('stock count compares against quantity at count time, not approval time', () => {
+test('LED-10 stock count compares against quantity at count time, not approval time', () => {
   const l = site();
   grnCement(l);
   const count = l.startCount('S1', 'CEM-OPC53');
@@ -134,7 +144,7 @@ test('stock count compares against quantity at count time, not approval time', (
   assert.equal(l.onHand('S1', 'CEM-OPC53'), 87);
 });
 
-test('running balances always equal a full replay of the ledger', () => {
+test('LED-11 running balances always equal a full replay of the ledger', () => {
   const l = site();
   grnCement(l);
   const iss = l.post({ key: 'i', type: 'ISSUE', store: 'S1', lines: [{ item: 'CEM-OPC53', qty: 33 }] });

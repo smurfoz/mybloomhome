@@ -1,0 +1,9 @@
+[
+  { "rule": "LED-7", "file": "ledger.mjs", "find": "l.received - (l.rejected ?? 0)", "replace": "l.received" },
+  { "rule": "LED-4", "file": "ledger.mjs", "find": "if (prior) return { ...prior, duplicate: true };", "replace": "" },
+  { "rule": "LED-3", "file": "ledger.mjs", "find": "b.qty < 0 && !this.allowNegative", "replace": "false" },
+  { "rule": "LED-10", "file": "ledger.mjs", "find": "if (e.seq > seq) break;", "replace": "" },
+  { "rule": "LED-1", "file": "ledger.mjs", "find": "Object.freeze({ ...m,", "replace": "({ ...m," },
+  { "rule": "LED-9", "file": "ledger.mjs", "find": "l.condition === 'damaged' ? QUARANTINE : 'MAIN'", "replace": "'MAIN'" },
+  { "rule": "LED-5", "file": "ledger.mjs", "find": "const toScaled = (n) => Math.round(n * SCALE);", "replace": "const toScaled = (n) => n * SCALE;" }
+]

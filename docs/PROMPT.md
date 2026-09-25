@@ -1,6 +1,11 @@
 # Build Prompt: Construction Site Store Management (QR)
 
-**Version 2**: reviewed and corrected. The stock rules in section 3 are checked by `proof/` (`npm test`).
+**Version 3**: adds Smart Category and the build protocol. Every module is built under [`PROTOCOL.md`](PROTOCOL.md): Design → Isolate → Build → Prove, checked by `npm run prove`.
+
+| Module | Rules | Proof |
+|---|---|---|
+| Stock ledger | LED-1…11 (section 3) | `modules/ledger/` |
+| Smart category | SC-1…9 (section 2.A1) | `modules/smart-category/` |
 
 ---
 
@@ -26,6 +31,27 @@
 - **QR content:** a URL of the form `https://<app>/q/<opaque-id>`. The ID is a random 10–12 character value, never a sequential number. Using a URL means the phone's own camera app also opens the right page. The QR holds only the ID; the item details live on the server.
 - **QR types:** item/bin, tool, location, person (a badge used to identify the receiver), and document (printed on the GRN or issue slip so the paper links back to the record).
 - **Label printing:** A4 grid PDF, and 50×25 mm labels for thermal printers. Use **error-correction level M** or higher so labels still scan when dusty or scratched, and keep a 4-module quiet zone around each code.
+
+### A1. Smart Category
+When someone types or imports an item name, the app suggests a category and pre-fills the item form. The full design is in `modules/smart-category/DESIGN.md`.
+- **14 construction categories:** Cement & Binders, Ready-mix Concrete, Aggregates & Sand, Steel & Reinforcement, Masonry, Formwork & Timber, Electrical, Plumbing & Sanitary, Finishes & Tiles, Paints & Chemicals, Hardware/Fasteners/Abrasives, Safety & PPE, Tools & Equipment, Fuel & Lubricants.
+- **The category sets defaults** for the item:
+  - base unit and other units;
+  - consumable or tool (a tool gets a serial number and a QR per unit);
+  - **returnable** (formwork, tools), which enables returns tracking;
+  - **hazardous** (paint, chemicals, fuel), which requires a hazardous storage location;
+  - **restricted** (fuel), where every issue needs approval;
+  - **issue to person** (PPE), where the receiver's badge must be scanned.
+- **Attributes are read from the name:** size in mm or inches, steel grade (`Fe500D`), cement type and grade (`OPC 53`), concrete grade (`M25`), cable cross-section (`2.5 sq mm`), pack weight (`50kg`). The pack weight becomes a unit conversion, for example 1 t = 20 bags.
+- **Missing required attributes are flagged**, for example a steel item with no grade. This keeps the catalog clean.
+- **Explainable.** Each suggestion shows its reasons, the matched words ("tmt", "Fe500D"), and up to 3 alternative categories to switch to with one tap.
+- **Confidence levels:**
+  - `auto`: pre-filled.
+  - `confirm`: pre-filled and highlighted.
+  - `unknown`: the user picks.
+  - Nothing is saved without the user accepting it. Bulk Excel import only accepts `auto` rows; the rest go to a review screen.
+- **Learns from corrections.** When a user changes a suggestion, the correction is saved as an override (`CategoryOverride`: company, normalized name, category). It applies to that name from then on, across the company. It works offline and needs no retraining.
+- **Rules-based, not AI:** deterministic, runs offline on the phone, and every answer is auditable. An AI fallback for `unknown` names is optional and can be added later behind the same interface.
 
 ### B. Delivery (Goods Received Note, GRN)
 - **Header:** supplier, PO number (optional), delivery note or invoice number, vehicle, driver, date and time, receiving store.
@@ -55,13 +81,22 @@
 - **Variance** = counted − system quantity **at the moment the shelf was counted**, not at the moment the count is approved. This way, issues posted between counting and approval are not mistaken for losses.
 - Approved variances post as count-adjustment entries.
 
-## 3. Inventory rules (must hold; proven in `proof/`)
+## 3. Inventory rules (must hold; proven in `modules/ledger/`, LED-1…11)
 1. **Append-only ledger.** Every document writes rows to `stock_ledger` and no row is ever updated or deleted. Mistakes are fixed with **reversal** documents. On-hand stock is a cached balance, and replaying the ledger must always reproduce it.
 2. **Atomic documents.** A multi-line document posts completely or not at all.
 3. **No negative stock** by default (an admin setting can allow it per store). Postgres enforces this by locking the affected balance rows (`SELECT … FOR UPDATE`) and checking them in the same transaction as the insert, so two storekeepers can't both issue the last 10 bags.
 4. **Idempotency.** Every document carries a client-generated UUID key with a unique constraint. Re-sending the same document returns the original result and never posts it twice. This is required for offline retries.
 5. **Exact numbers.** Quantities are stored as `NUMERIC(18,4)` in the item's base unit, and money as `NUMERIC(18,4)`. Floating-point types are never used for quantities or money.
 6. **Valuation: weighted-average cost** per item per store. Receipts add their accepted quantity × unit cost. Outbound movements go out at the current average. Returns come back at the cost they were issued at. Transfers carry their value through `TRANSIT`.
+
+## 3a. Build protocol
+Every module is built under [`PROTOCOL.md`](PROTOCOL.md):
+1. **Design**: `DESIGN.md` with numbered, testable rules.
+2. **Isolate**: a pure module with no input/output and sibling imports only, so it runs in the browser offline and on the server.
+3. **Build**: code, plus real-world fixtures and traps.
+4. **Prove**: a test for every rule, and a mutation check where planted bugs must be caught.
+
+Modules connect only through app glue, and a contract test covers each connection. `npm run prove` must pass on every change; CI runs it.
 
 ## 4. Scanning
 - Use the browser's native `BarcodeDetector` where it exists (Chrome on Android). Otherwise fall back to **`@zxing/browser`**, which is actively maintained. Avoid `html5-qrcode`: its last release was 2.3.8 in April 2023.
@@ -97,10 +132,10 @@
 - Hosting on Vercel with Neon or Supabase Postgres
 
 ## 9. Data model (minimum)
-`Company, Project, Store, Location, User, Role, UserSiteAccess, Supplier, Item, ItemCategory, Uom, ItemUomConversion, Batch, Asset (tool), QrCode, PurchaseOrder, PurchaseOrderLine, Grn, GrnLine, MaterialRequest, MaterialRequestLine, Approval, Issue, IssueLine, Return, ReturnLine, Transfer, TransferLine, Adjustment, StockCount, StockCountLine, StockLedger, StockBalance, CostCode, AssetCheckout, Attachment, SyncConflict, AuditLog`
+`Company, Project, Store, Location, User, Role, UserSiteAccess, Supplier, Item, ItemCategory (code, defaults, required attributes), CategoryOverride, ItemAttribute, Uom, ItemUomConversion, Batch, Asset (tool), QrCode, PurchaseOrder, PurchaseOrderLine, Grn, GrnLine, MaterialRequest, MaterialRequestLine, Approval, Issue, IssueLine, Return, ReturnLine, Transfer, TransferLine, Adjustment, StockCount, StockCountLine, StockLedger, StockBalance, CostCode, AssetCheckout, Attachment, SyncConflict, AuditLog`
 
 ## 10. Acceptance criteria
-Each rule in section 3 needs an automated test on the real database, mirroring `proof/ledger.test.mjs`:
+Each rule in section 3 needs an automated test on the real database, mirroring `modules/ledger/ledger.test.mjs`:
 - [ ] Receive 100 bags → issue 30 → return 5 → **75 on hand**, and stock value = 75 × unit cost
 - [ ] A GRN with 100 received and 4 rejected adds **96**
 - [ ] Issuing more than is on hand is rejected, and none of the document's lines post
@@ -114,6 +149,12 @@ Each rule in section 3 needs an automated test on the real database, mirroring `
 - [ ] A count of 97 against 100, with an issue of 10 posted before approval, gives a variance of **−3** and **87** on hand
 - [ ] Cached balances equal a full replay of the ledger
 - [ ] **Concurrency:** two simultaneous issues of 60 against 100 on hand → exactly one succeeds *(DB-level test)*
+- [ ] Values that aren't exact in binary floating point still balance: three issues of 0.07 m³ from 1 m³ leave exactly **0.79**
+- [ ] **Smart Category:** all 65 golden names classify correctly, including 15 traps (binding wire, MS pipe, solvent cement, grinder disc…)
+- [ ] Smart Category: `pipe` alone → `confirm`; gibberish → `unknown`; a saved correction overrides the next suggestion
+- [ ] Smart Category: `2.5 sq mm` cable gives a cross-section, not a 2.5 mm size; `OPC 53 50kg` gives 1 t = 20 bags
+- [ ] Classified items are accepted by the ledger in their default and alternative units (contract test)
+- [ ] `npm run prove` passes: every rule is tested and every planted bug is caught
 - [ ] Scanning works on Android Chrome and iOS Safari (over HTTPS)
 - [ ] An offline issue syncs after reconnecting, and a conflicting one appears in *Sync conflicts*
 - [ ] Playwright end-to-end tests cover receive, issue, return and transfer
@@ -121,7 +162,7 @@ Each rule in section 3 needs an automated test on the real database, mirroring `
 - [ ] README covers setup, environment variables and deployment
 
 ## 11. Phases
-1. Item master with units and conversions, stores and locations, QR generation and printing, GRN, Issue, ledger and balances, basic dashboard.
+1. Item master with **Smart Category**, units and conversions, stores and locations, QR generation and printing, GRN, Issue, ledger and balances, basic dashboard.
 2. Requests and approvals, returns, transfers through transit, tool checkout, cost codes.
 3. Stock counts, reports and exports, offline sync with the conflict queue, alerts.
 
@@ -131,6 +172,15 @@ Each rule in section 3 needs an automated test on the real database, mirroring `
 - Currency, languages, and whether to add GST/VAT to GRN valuation.
 
 ---
+
+## Review log: v2 → v3
+| # | Change | How it's checked |
+|---|---|---|
+| 16 | Added Smart Category: 14 categories, defaults, attributes, confidence gate, corrections | SC-1…9, 65 golden names, 11 mutations |
+| 17 | Added the Design → Isolate → Build → Prove protocol with automated gates | `npm run prove` |
+| 18 | Found a hole in v2's proof: removing ledger rounding wasn't caught, because 0.1 and 2.5 scale exactly | New 0.07 m³ test; the mutation is now caught |
+| 19 | Moved `proof/` into `modules/ledger/` and gave its rules IDs LED-1…11 | rule-coverage gate |
+| 20 | Contract test connecting Smart Category's output to Ledger input (pack weight becomes a unit conversion) | `tests/integration.test.mjs` |
 
 ## Review log: v1 → v2
 | # | Problem in v1 | Fix in v2 | How it's checked |

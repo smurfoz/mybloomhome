@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test proof/*.test.mjs"
+    "test": "node --test modules/*/*.test.mjs tests/*.test.mjs",
+    "prove": "node scripts/prove.mjs"
   }
 }

@@ -1,4 +1,4 @@
-// Reference model of the stock-ledger rules in docs/PROMPT.md (section 3).
+// Stock-ledger module. Rules are defined in ./DESIGN.md (LED-1..LED-11).
 // It is a proof harness, not the production implementation: it pins down the
 // business rules so the real (Postgres-backed) ledger can be tested against them.
 //
