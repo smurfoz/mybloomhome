@@ -1,0 +1,122 @@
+[
+ {
+  "rule": "DB-1",
+  "file": "db/migrations/001_init.sql",
+  "find": "CREATE TRIGGER stock_entries_no_update BEFORE UPDATE OR DELETE ON stock_entries",
+  "replace": "CREATE TRIGGER stock_entries_no_update BEFORE INSERT ON companies"
+ },
+ {
+  "rule": "DB-2",
+  "file": "lib/ledger-db.ts",
+  "find": "    await insertLines(c, claimed.id, lines);\n    await applyMoves(c, ctx, claimed.id, moves);",
+  "replace": "    await insertLines(c, claimed.id, lines);\n    await c.query('COMMIT; BEGIN');\n    await applyMoves(c, ctx, claimed.id, moves);"
+ },
+ {
+  "rule": "DB-3",
+  "file": "lib/ledger-db.ts",
+  "find": "     FOR UPDATE`, sel)).rows;",
+  "replace": "     `, sel)).rows;"
+ },
+ {
+  "rule": "DB-3",
+  "file": "lib/ledger-db.ts",
+  "find": "    if (b.qty < 0n) {",
+  "replace": "    if (false) {"
+ },
+ {
+  "rule": "DB-4",
+  "file": "lib/ledger-db.ts",
+  "find": "ON CONFLICT (company_id, idem_key) DO NOTHING",
+  "replace": "ON CONFLICT DO NOTHING"
+ },
+ {
+  "rule": "DB-4",
+  "file": "lib/ledger-db.ts",
+  "find": "return `{${Object.keys(v).sort().filter(",
+  "replace": "return `{${Object.keys(v).filter("
+ },
+ {
+  "rule": "DB-4",
+  "file": "lib/ledger-db.ts",
+  "find": "if (prior.fingerprint !== fingerprint) fail(",
+  "replace": "if (false) fail("
+ },
+ {
+  "rule": "DB-5",
+  "file": "lib/decimal.ts",
+  "find": "if (/[1-9]/.test(extra)) return fail(",
+  "replace": "if (false) return fail("
+ },
+ {
+  "rule": "DB-6",
+  "file": "lib/decimal.ts",
+  "find": "if (2n * absR >= absC) q += (n < 0n) === (c < 0n) ? 1n : -1n;",
+  "replace": "if (2n * absR > absC) q += (n < 0n) === (c < 0n) ? 1n : -1n;"
+ },
+ {
+  "rule": "DB-6",
+  "file": "lib/ledger-db.ts",
+  "find": "const factor = refs.factor(l.itemId, uom);\n      const q = parseDec(",
+  "replace": "const q0 = 0;\n      const q = parseDec("
+ },
+ {
+  "rule": "DB-7",
+  "file": "lib/ledger-db.ts",
+  "find": "      if (m.recordedValue !== undefined) m.priceVariance = m.recordedValue - m.value;",
+  "replace": ""
+ },
+ {
+  "rule": "DB-7",
+  "file": "lib/ledger-db.ts",
+  "find": "if (orig.type === 'REVERSAL') fail('BAD_TYPE',",
+  "replace": "if (false) fail('BAD_TYPE',"
+ },
+ {
+  "rule": "SEC-1",
+  "file": "lib/auth.ts",
+  "find": "WHERE s.token_hash = $1 AND s.expires_at > now() AND u.active",
+  "replace": "WHERE s.token_hash = $1 AND u.active"
+ },
+ {
+  "rule": "SEC-1",
+  "file": "lib/auth.ts",
+  "find": "if (!user || !ok || !user.active) fail(",
+  "replace": "if (!user || !user.active) fail("
+ },
+ {
+  "rule": "SEC-2",
+  "file": "lib/items.ts",
+  "find": "WHERE q.code = $1 AND q.company_id = $2 AND q.entity_type = 'item'`, [qr, ctx.companyId]",
+  "replace": "WHERE q.code = $1 AND q.entity_type = 'item' AND $2::bigint > 0`, [qr, ctx.companyId]"
+ },
+ {
+  "rule": "SEC-2",
+  "file": "lib/ledger-db.ts",
+  "find": "'SELECT id, type, store_id FROM documents WHERE id = $1 AND company_id = $2'",
+  "replace": "'SELECT id, type, store_id FROM documents WHERE id = $1 AND $2::bigint > 0'"
+ },
+ {
+  "rule": "SEC-4",
+  "file": "lib/ledger-db.ts",
+  "find": "      assertStoreAccess(ctx, doc.storeId);    // same fingerprint \u21d2 same store",
+  "replace": ""
+ },
+ {
+  "rule": "APP-1",
+  "file": "lib/items.ts",
+  "find": "if (suggestion.category !== category.code) {",
+  "replace": "if (suggestion.category === null) {"
+ },
+ {
+  "rule": "APP-4",
+  "file": "lib/qr.ts",
+  "find": "return m ? m[1].toLowerCase() : null;",
+  "replace": "return m ? m[1] : null;"
+ },
+ {
+  "rule": "DB-9",
+  "file": "lib/db.ts",
+  "find": "  p.on('error', log);\n  p.on('connect', (client) => client.on('error', log));\n",
+  "replace": "  void log;\n"
+ }
+]

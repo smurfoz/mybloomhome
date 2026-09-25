@@ -1,0 +1,86 @@
+[
+ {
+  "rule": "SC-1",
+  "file": "classify.mjs",
+  "find": ".replace(/sq\\.?\\s*mm\\b|sqmm\\b|mm2\\b|mm\u00b2/g, ' sq mm ')",
+  "replace": ""
+ },
+ {
+  "rule": "SC-2",
+  "file": "classify.mjs",
+  "find": "text = text.replace(p.re, '|');",
+  "replace": ""
+ },
+ {
+  "rule": "SC-3",
+  "file": "classify.mjs",
+  "find": "const AUTO_MIN_SCORE = 2;",
+  "replace": "const AUTO_MIN_SCORE = 1;"
+ },
+ {
+  "rule": "SC-3",
+  "file": "classify.mjs",
+  "find": "const AUTO_MIN_RATIO = 2;",
+  "replace": "const AUTO_MIN_RATIO = 1;"
+ },
+ {
+  "rule": "SC-4",
+  "file": "classify.mjs",
+  "find": "if (override && byCode.has(override)) {",
+  "replace": "if (false) {"
+ },
+ {
+  "rule": "SC-5",
+  "file": "classify.mjs",
+  "find": "(\\d+(?:\\.\\d+)?) mm(?= |$)",
+  "replace": "(\\d+(?:\\.\\d+)?) (?:sq )?mm(?= |$)"
+ },
+ {
+  "rule": "SC-6",
+  "file": "taxonomy.mjs",
+  "find": "baseUom: 'pcs', kind: 'asset'",
+  "replace": "baseUom: 'pcs', kind: 'consumable'"
+ },
+ {
+  "rule": "SC-6",
+  "file": "classify.mjs",
+  "find": "altUoms: [...altUoms]",
+  "replace": "altUoms"
+ },
+ {
+  "rule": "SC-7",
+  "file": "classify.mjs",
+  "find": "cat.required.filter((k) => attributes[k] === undefined)",
+  "replace": "[]"
+ },
+ {
+  "rule": "SC-8",
+  "file": "taxonomy.mjs",
+  "find": "'binding wire',",
+  "replace": ""
+ },
+ {
+  "rule": "SC-9",
+  "file": "taxonomy.mjs",
+  "find": "'gravel',",
+  "replace": "'gravel', 'pipe',"
+ },
+ {
+  "rule": "SC-1",
+  "file": "classify.mjs",
+  "find": "for (let i = 0; i < 8 && text !== prev; i++) {",
+  "replace": "for (let i = 0; i < 1 && text !== prev; i++) {"
+ },
+ {
+  "rule": "SC-5",
+  "file": "classify.mjs",
+  "find": "|\\b(33|43|53) grade\\b/))) {",
+  "replace": "/))) {"
+ },
+ {
+  "rule": "SC-5",
+  "file": "classify.mjs",
+  "find": "(?: ?(d))?\\b/",
+  "replace": "(d?)\\b/"
+ }
+]

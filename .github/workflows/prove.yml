@@ -1,0 +1,48 @@
+name: prove
+on: [push, pull_request]
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/store_e2e
+      SEED_PASSWORD: ci-demo-password-2026
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests (modules, QR)
+        run: npm test
+      - name: PostgreSQL tests (rules, differential, concurrency, security)
+        run: npm run test:db
+      - name: Protocol gates (design, isolation, rule coverage, mutations)
+        run: npm run prove
+      - name: Build
+        run: npm run build
+      - name: Seed an end-to-end database
+        run: |
+          psql "$TEST_DATABASE_ADMIN_URL" -c 'CREATE DATABASE store_e2e'
+          npm run db:migrate
+          npm run db:seed
+      - run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
