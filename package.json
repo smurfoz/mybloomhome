@@ -1,0 +1,13 @@
+{
+  "name": "mybloomhome-inventory",
+  "version": "1.0.0",
+  "description": "Construction inventory system that auto-records deliveries and issues to installers",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --no-warnings src/server.js",
+    "seed": "node --no-warnings scripts/seed.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  }
+}
