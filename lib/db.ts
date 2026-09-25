@@ -8,17 +8,28 @@ export type Client = pg.PoolClient;
 
 let pool: pg.Pool | undefined;
 
+// DB-9: a connection the server drops (restart, failover, admin terminate)
+// must never crash the process. Without these handlers pg emits an 'error'
+// nobody listens to, which Node turns into an uncaught exception. The pool
+// discards the broken client and opens a new one on the next query.
+function resilient(p: pg.Pool): pg.Pool {
+  const log = (err: Error) => { if (!p.ending) console.error(`[db] connection lost: ${err.message}`); };
+  p.on('error', log);
+  p.on('connect', (client) => client.on('error', log));
+  return p;
+}
+
 export function getPool(): pg.Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) throw new Error('DATABASE_URL is not set');
-    pool = new pg.Pool({ connectionString, max: 10 });
+    pool = resilient(new pg.Pool({ connectionString, max: 10 }));
   }
   return pool;
 }
 
 export function createPool(connectionString: string, max = 10): pg.Pool {
-  return new pg.Pool({ connectionString, max });
+  return resilient(new pg.Pool({ connectionString, max }));
 }
 
 const RETRYABLE = new Set(['40P01', '40001']); // deadlock, serialization failure

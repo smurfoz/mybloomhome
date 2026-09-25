@@ -50,6 +50,7 @@ The spec's defaults are followed, with one deliberate change:
 - **DB-6** The database ledger matches the reference model. A randomised differential test applies the same operations to both. It checks that each operation gives the same outcome (posted, duplicate, or the same error code) and that the final quantities and values are identical.
 - **DB-7** A document is reversed at most once, enforced by `UNIQUE (reverses_id)`, so this also holds under concurrency. A reversal can't be reversed. A reversed receipt leaves at the current average and records `price_variance`.
 - **DB-8** Balances always equal the sum of ledger entries (checked in SQL).
+- **DB-9** A lost database connection never crashes the app. Every pool and client has an error handler, and the pool replaces a broken connection on the next query. (Found by CI: without the handlers, connections killed while closing crashed the process.)
 
 ### Security
 - **SEC-1** Every page and API needs a session.

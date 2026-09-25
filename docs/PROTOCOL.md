@@ -108,6 +108,7 @@ Each finding was first reproduced by a probe script, then fixed, then locked in 
 | Browser test | The scanner ignored a repeat code for 1.5 s from the keyboard too, not only the camera | Repeats are only ignored for camera reads |
 | Browser test | The seed gave the PM no store, so SEC-4 correctly blocked their reversals | Seed assigns the PM to both stores |
 | Screenshot review | The dashboard's "below reorder level" showed the 12 listed items (12) instead of the true 43 | Separate count query and a regression test |
+| **CI** (and one unexplained local failure) | `pool.end()` resolves before its sockets close; a connection killed in that gap raised an `error` nobody handled, which **would crash the app server** on a Postgres restart or failover. Reproduced on demand: 74 uncaught errors in 60 cycles without handlers, 0 with | Error handlers on every pool and client (DB-9), test cleanup waits for connections to close, and a DB-9 test proven to fail without the fix |
 
 Lessons now built into the protocol:
 - **Test the test.** Run every new proof against the known-buggy version, and require it to fail.

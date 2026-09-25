@@ -22,9 +22,17 @@ export async function freshDb(): Promise<{ db: Db; url: string; drop: () => Prom
   return {
     db, url,
     drop: async () => {
+      // pool.end() resolves before its sockets have closed (pg-pool removes
+      // clients first and closes them asynchronously), so wait for the server
+      // to see them gone; FORCE only as a last resort.
       await db.end();
       const a = new pg.Client({ connectionString: ADMIN_URL });
       await a.connect();
+      for (let i = 0; i < 50; i++) {
+        const n = (await a.query('SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = $1', [name])).rows[0].n;
+        if (n === 0) break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
       await a.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
       await a.end();
     },
