@@ -1,21 +1,128 @@
 [
-  { "rule": "LED-1", "file": "ledger.mjs", "find": "const written = moves.map((m) => Object.freeze({ ...m, seq, doc: id, type: doc.type }));", "replace": "const written = moves.map((m) => ({ ...m, seq, doc: id, type: doc.type }));" },
-  { "rule": "LED-1", "file": "ledger.mjs", "find": "if (this.reversed.has(docId)) fail('ALREADY_REVERSED', docId);", "replace": "" },
-  { "rule": "LED-1", "file": "ledger.mjs", "find": "if (dependents.length) {", "replace": "if (false) {" },
-  { "rule": "LED-2", "file": "ledger.mjs", "find": "const get = (k) => scratch.get(k) ?? { ...(this.balances.get(k) ?? { qty: 0, value: 0 }) };", "replace": "const get = (k) => { const b = this.balances.get(k) ?? { qty: 0, value: 0 }; this.balances.set(k, b); return b; };" },
-  { "rule": "LED-3", "file": "ledger.mjs", "find": "b.qty < 0 && !this.allowNegative", "replace": "false" },
-  { "rule": "LED-4", "file": "ledger.mjs", "find": "if (prior) {", "replace": "if (false) {" },
-  { "rule": "LED-4", "file": "ledger.mjs", "find": "if (prior.fingerprint !== fingerprint) fail('KEY_REUSED', `key ${doc.key} was used for a different document`);", "replace": "" },
-  { "rule": "LED-5", "file": "ledger.mjs", "find": "const toScaled = (n) => Math.round(n * SCALE);", "replace": "const toScaled = (n) => n * SCALE;" },
-  { "rule": "LED-6", "file": "ledger.mjs", "find": "...(qty < 0 ? { recordedValue: value } : { value }),", "replace": "value," },
-  { "rule": "LED-7", "file": "ledger.mjs", "find": "l.received - rejected, l.uom", "replace": "l.received, l.uom" },
-  { "rule": "LED-8", "file": "ledger.mjs", "find": "{ store: doc.to, location: TRANSIT, item: l.item, qty: scaled, value: v },", "replace": "{ store: doc.to, location: TRANSIT, item: l.item, qty: scaled, value: 0 }," },
-  { "rule": "LED-9", "file": "ledger.mjs", "find": "if (already + scaled > issuedQty) {", "replace": "if (scaled > issuedQty) {" },
-  { "rule": "LED-9", "file": "ledger.mjs", "find": "if (this.reversed.has(issue.id)) fail('ALREADY_REVERSED', `${issue.id} was reversed`);", "replace": "" },
-  { "rule": "LED-9", "file": "ledger.mjs", "find": "location: l.condition === 'damaged' ? QUARANTINE : src[0].location,", "replace": "location: src[0].location," },
-  { "rule": "LED-10", "file": "ledger.mjs", "find": "if (e.seq > seq) break;", "replace": "" },
-  { "rule": "LED-10", "file": "ledger.mjs", "find": "if (c.key === key) return { ...c.result, duplicate: true };", "replace": "" },
-  { "rule": "LED-12", "file": "ledger.mjs", "find": "if (!isNum(l.unitCost) || l.unitCost < 0) fail('BAD_COST', `unitCost required for ${l.item}`);", "replace": "" },
-  { "rule": "LED-12", "file": "ledger.mjs", "find": "if (SYSTEM_LOCATIONS.has(where) && !allowed)", "replace": "if (false)" },
-  { "rule": "LED-12", "file": "ledger.mjs", "find": "if (!doc.to || doc.to === doc.store)", "replace": "if (false)" }
+ {
+  "rule": "LED-1",
+  "file": "ledger.mjs",
+  "find": "const written = moves.map((m) => Object.freeze({ ...m, seq, doc: id, type: doc.type }));",
+  "replace": "const written = moves.map((m) => ({ ...m, seq, doc: id, type: doc.type }));"
+ },
+ {
+  "rule": "LED-1",
+  "file": "ledger.mjs",
+  "find": "if (this.reversed.has(docId)) fail('ALREADY_REVERSED', docId);",
+  "replace": ""
+ },
+ {
+  "rule": "LED-1",
+  "file": "ledger.mjs",
+  "find": "if (dependents.length) {",
+  "replace": "if (false) {"
+ },
+ {
+  "rule": "LED-2",
+  "file": "ledger.mjs",
+  "find": "const get = (k) => scratch.get(k) ?? { ...(this.balances.get(k) ?? { qty: 0, value: 0 }) };",
+  "replace": "const get = (k) => { const b = this.balances.get(k) ?? { qty: 0, value: 0 }; this.balances.set(k, b); return b; };"
+ },
+ {
+  "rule": "LED-3",
+  "file": "ledger.mjs",
+  "find": "b.qty < 0 && !this.allowNegative",
+  "replace": "false"
+ },
+ {
+  "rule": "LED-4",
+  "file": "ledger.mjs",
+  "find": "if (prior) {",
+  "replace": "if (false) {"
+ },
+ {
+  "rule": "LED-4",
+  "file": "ledger.mjs",
+  "find": "if (prior.fingerprint !== fingerprint) fail('KEY_REUSED', `key ${doc.key} was used for a different document`);",
+  "replace": ""
+ },
+ {
+  "rule": "LED-6",
+  "file": "ledger.mjs",
+  "find": "...(qty < 0 ? { recordedValue: value } : { value }),",
+  "replace": "value,"
+ },
+ {
+  "rule": "LED-7",
+  "file": "ledger.mjs",
+  "find": "toScaled(l.received) - toScaled(rejected)",
+  "replace": "toScaled(l.received)"
+ },
+ {
+  "rule": "LED-8",
+  "file": "ledger.mjs",
+  "find": "{ store: doc.to, location: TRANSIT, item: l.item, qty: scaled, value: v },",
+  "replace": "{ store: doc.to, location: TRANSIT, item: l.item, qty: scaled, value: 0 },"
+ },
+ {
+  "rule": "LED-9",
+  "file": "ledger.mjs",
+  "find": "if (already + scaled > issuedQty) {",
+  "replace": "if (scaled > issuedQty) {"
+ },
+ {
+  "rule": "LED-9",
+  "file": "ledger.mjs",
+  "find": "if (this.reversed.has(issue.id)) fail('ALREADY_REVERSED', `${issue.id} was reversed`);",
+  "replace": ""
+ },
+ {
+  "rule": "LED-9",
+  "file": "ledger.mjs",
+  "find": "location: l.condition === 'damaged' ? QUARANTINE : src[0].location,",
+  "replace": "location: src[0].location,"
+ },
+ {
+  "rule": "LED-10",
+  "file": "ledger.mjs",
+  "find": "if (e.seq > seq) break;",
+  "replace": ""
+ },
+ {
+  "rule": "LED-10",
+  "file": "ledger.mjs",
+  "find": "if (c.key === key) return { ...c.result, duplicate: true };",
+  "replace": ""
+ },
+ {
+  "rule": "LED-12",
+  "file": "ledger.mjs",
+  "find": "if (!isNum(l.unitCost) || l.unitCost < 0) fail('BAD_COST', `unitCost required for ${l.item}`);",
+  "replace": ""
+ },
+ {
+  "rule": "LED-12",
+  "file": "ledger.mjs",
+  "find": "if (SYSTEM_LOCATIONS.has(where) && !allowed)",
+  "replace": "if (false)"
+ },
+ {
+  "rule": "LED-12",
+  "file": "ledger.mjs",
+  "find": "if (!doc.to || doc.to === doc.store)",
+  "replace": "if (false)"
+ },
+ {
+  "rule": "LED-5",
+  "file": "ledger.mjs",
+  "find": "if (2n * (r < 0n ? -r : r) >= (d < 0n ? -d : d)) q += (n < 0n) === (d < 0n) ? 1n : -1n;",
+  "replace": "if (2n * r >= d) q += 1n;"
+ },
+ {
+  "rule": "LED-5",
+  "file": "ledger.mjs",
+  "find": "throw new LedgerError('BAD_QTY', `${what} ${n} has more than 4 decimal places`);",
+  "replace": "return s;"
+ },
+ {
+  "rule": "LED-5",
+  "file": "ledger.mjs",
+  "find": "value: mulDiv(toScaled(accepted), toScaled(l.unitCost, 'unitCost'), SCALE) };",
+  "replace": "value: Math.round(fromScaled(scaled) * l.unitCost * SCALE) };"
+ }
 ]

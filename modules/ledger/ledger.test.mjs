@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Ledger, LedgerError, TRANSIT, QUARANTINE } from './ledger.mjs';
+import { Ledger, LedgerError, TRANSIT, QUARANTINE, mulDiv } from './ledger.mjs';
 
 function site() {
   const l = new Ledger();
@@ -86,6 +86,24 @@ test('LED-5 values that are inexact in binary floating point still balance exact
   }
   assert.equal(l.onHand('S1', 'RMC-M25'), 0.79);            // 0.07 * 10000 = 700.0000000000001
   for (const e of l.entries) assert.ok(Number.isInteger(e.qty), `scaled qty ${e.qty} is an integer`);
+});
+
+test('LED-5 exact integer arithmetic: half away from zero, no float, no silent rounding', () => {
+  assert.equal(mulDiv(5, 1, 2), 3);
+  assert.equal(mulDiv(-5, 1, 2), -3, 'Math.round(-2.5) would give -2; NUMERIC gives -3');
+  assert.equal(mulDiv(5, -1, 2), -3);
+  assert.equal(mulDiv(7, 1, 3), 2);
+  assert.equal(mulDiv(-7, 1, 3), -2);
+  // Products beyond 2^53 stay exact.
+  assert.equal(mulDiv(9_007_199_254_740_991, 3, 9), 3_002_399_751_580_330);
+  const l = site();
+  assert.throws(() => l.post({ key: 'p', type: 'GRN', store: 'S1',
+    lines: [{ item: 'CEM-OPC53', received: 1.00005, unitCost: 1 }] }), { code: 'BAD_QTY' });
+  assert.throws(() => l.post({ key: 'c', type: 'GRN', store: 'S1',
+    lines: [{ item: 'CEM-OPC53', received: 1, unitCost: 0.12345 }] }), { code: 'BAD_QTY' });
+  // Cost is taken per the unit bought in: 0.3 t at 61,111.11/t.
+  l.post({ key: 'g', type: 'GRN', store: 'S1', lines: [{ item: 'STL-TMT12', received: 0.3, uom: 't', unitCost: 61111.11 }] });
+  assert.equal(l.value('S1', 'STL-TMT12'), 18333.333);
 });
 
 test('LED-6 weighted-average cost across two deliveries', () => {

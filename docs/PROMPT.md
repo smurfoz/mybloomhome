@@ -1,5 +1,7 @@
 # Build Prompt: Construction Site Store Management (QR)
 
+**Phase 1 is built**: see the [README](../README.md) and [`phase-1/DESIGN.md`](phase-1/DESIGN.md). All protocol gates pass for the app against PostgreSQL.
+
 **Version 3.1**: adds Smart Category and the build protocol, and fixes 16 defects found in review (see the review log). Every module is built under [`PROTOCOL.md`](PROTOCOL.md): Design → Isolate → Build → Prove, checked by `npm run prove`.
 
 | Module | Rules | Proof |

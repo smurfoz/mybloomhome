@@ -94,6 +94,21 @@ Each finding was first reproduced by a probe script, then fixed, then locked in 
 | 15 | attack on prover | A side-effect `import 'pkg'` got past the isolation check | tooling |
 | 16 | meta-check | The first version of the randomised test **passed on the buggy ledger**. It relied on the ledger's own bookkeeping, so it was rewritten to keep its own independent records. It now fails on the old code and passes on the new. | LED-11 |
 
+### Phase 1 build: what the proofs caught
+| Found by | Defect | Fix |
+|---|---|---|
+| Differential test (step 2) | The database rejected float input like `12.340000000000001`, which the model accepted | Numbers within float noise of 4 decimals are accepted, the same tolerance on both sides; text input stays strict |
+| Differential test | Unknown unit plus zero quantity: the model reported `BAD_UOM`, the database `BAD_QTY` | Same check order on both sides |
+| Mutation gate (model) | `roundHalfAway` could be removed with no effect: dead code once over-precise input is rejected | Removed |
+| Mutation gate (app) | Learning from a correction to a *wrong* suggestion was never asserted | Test added |
+| Rule-coverage gate (app) | SEC-5 (same-origin JSON) had only a manual curl check | Browser test added |
+| Concurrency mutation | Removing lock sorting passed the first test, because existing rows are locked in index order anyway | The test now races brand-new rows and reads Postgres's deadlock counter |
+| QR damage test | My first "damage" wiped a finder pattern, and my second claimed a 5% scattered tolerance. Both were wrong | Measured the real limits; the test asserts a 6% smudge |
+| Browser test | The receive form's "reason for rejection" label wasn't linked to its input (accessibility) | Every line label linked to its input |
+| Browser test | The scanner ignored a repeat code for 1.5 s from the keyboard too, not only the camera | Repeats are only ignored for camera reads |
+| Browser test | The seed gave the PM no store, so SEC-4 correctly blocked their reversals | Seed assigns the PM to both stores |
+| Screenshot review | The dashboard's "below reorder level" showed the 12 listed items (12) instead of the true 43 | Separate count query and a regression test |
+
 Lessons now built into the protocol:
 - **Test the test.** Run every new proof against the known-buggy version, and require it to fail.
 - **Invariants over examples.** Rows 10 and 11 were found only by randomised checks. Hand-written examples had passed.

@@ -3,11 +3,34 @@
 // business rules so the real (Postgres-backed) ledger can be tested against them.
 //
 // Quantities and money are stored as scaled integers (4 decimal places) so
-// 2.5 m³ or 0.125 t never drift through floating-point error.
+// 2.5 m³ or 0.125 t never drift through floating-point error. Products and
+// quotients go through BigInt and round half away from zero — the same rule as
+// PostgreSQL NUMERIC — so the database ledger can be compared value-for-value.
 
 const SCALE = 10_000;
-const toScaled = (n) => Math.round(n * SCALE);
+const FACTOR_SCALE = 1_000_000; // unit conversions keep 6 decimal places
 const fromScaled = (n) => n / SCALE;
+
+// User input → scaled integer. More than 4 decimal places is rejected, not
+// silently rounded, so nothing is stored that the user did not enter (and no
+// input ever sits on a rounding half).
+const toScaled = (n, what = 'quantity') => {
+  const s = Math.round(n * SCALE);
+  if (Math.abs(n * SCALE - s) > 1e-6 * Math.max(1, Math.abs(s))) {
+    throw new LedgerError('BAD_QTY', `${what} ${n} has more than 4 decimal places`);
+  }
+  return s;
+};
+
+// round(a * b / c) exactly, half away from zero.
+export function mulDiv(a, b, c) {
+  const n = BigInt(a) * BigInt(b);
+  const d = BigInt(c);
+  let q = n / d;
+  const r = n % d;
+  if (2n * (r < 0n ? -r : r) >= (d < 0n ? -d : d)) q += (n < 0n) === (d < 0n) ? 1n : -1n;
+  return Number(q);
+}
 
 export const TRANSIT = '__TRANSIT__';
 export const QUARANTINE = 'QUARANTINE';
@@ -37,10 +60,13 @@ export class Ledger {
   }
 
   defineItem(code, { baseUom, conversions = {}, kind = 'consumable' }) {
+    const factors = { [baseUom]: FACTOR_SCALE };
     for (const [u, f] of Object.entries(conversions)) {
-      if (!isNum(f) || f <= 0) fail('BAD_UOM', `${code}: conversion for ${u} must be > 0`);
+      const f6 = isNum(f) ? Math.round(f * FACTOR_SCALE) : 0;
+      if (f6 <= 0) fail('BAD_UOM', `${code}: conversion for ${u} must be > 0`);
+      factors[u] = f6;
     }
-    this.items.set(code, { baseUom, factors: { [baseUom]: 1, ...conversions }, kind });
+    this.items.set(code, { baseUom, factors, kind });
   }
 
   // --- queries -------------------------------------------------------------
@@ -115,7 +141,7 @@ export class Ledger {
       if (m.value === undefined) {
         // Outbound at current weighted-average cost. Taking the whole balance
         // takes the whole value, so no rounding residue is ever left behind.
-        m.value = b.qty === 0 ? 0 : Math.round((b.value * m.qty) / b.qty);
+        m.value = b.qty === 0 ? 0 : mulDiv(b.value, m.qty, b.qty);
       }
       if (m.recordedValue !== undefined) {
         m.priceVariance = m.recordedValue - m.value;
@@ -180,7 +206,7 @@ export class Ledger {
       fail('BAD_SEQ', `countedAtSeq must be between ${c.startSeq} and ${this.seq}`);
     }
     const expected = this.qtyAsOf(c.store, c.item, countedAtSeq, c.location);
-    const variance = fromScaled(toScaled(counted) - toScaled(expected));
+    const variance = fromScaled(toScaled(counted) - Math.round(expected * SCALE));
     const id = variance === 0 ? null : this.post({
       key, type: 'COUNT_ADJ', store: c.store,
       lines: [{ item: c.item, qty: variance, location: c.location }],
@@ -202,7 +228,7 @@ export class Ledger {
     if (!isNum(qty) || (!signed && qty < 0) || (!allowZero && qty === 0)) {
       fail('BAD_QTY', `invalid quantity ${qty} for ${itemCode}`);
     }
-    return { scaled: toScaled(qty * f), factor: f };
+    return { scaled: mulDiv(toScaled(qty), f, FACTOR_SCALE) };
   }
 
   #plan(doc) {
@@ -225,9 +251,11 @@ export class Ledger {
             fail('BAD_QTY', `rejected must be between 0 and received for ${l.item}`);
           }
           if (!isNum(l.unitCost) || l.unitCost < 0) fail('BAD_COST', `unitCost required for ${l.item}`);
-          const { scaled, factor } = this.#base(l.item, l.received - rejected, l.uom, { allowZero: true });
+          const accepted = fromScaled(toScaled(l.received) - toScaled(rejected));
+          const { scaled } = this.#base(l.item, accepted, l.uom, { allowZero: true });
+          // Value = accepted quantity in the unit it was bought in × that unit's cost.
           return { store: doc.store, location: loc(l), item: l.item, qty: scaled,
-                   value: Math.round(fromScaled(scaled) * (l.unitCost / factor) * SCALE) };
+                   value: mulDiv(toScaled(accepted), toScaled(l.unitCost, 'unitCost'), SCALE) };
         });
       case 'ISSUE':
         return doc.lines.map((l) => ({ store: doc.store, location: loc(l), item: l.item,
@@ -256,7 +284,7 @@ export class Ledger {
           pending.set(k, (pending.get(k) ?? 0) + scaled);
           return { store: doc.store, item: l.item, qty: scaled, ref: issue.id,
                    location: l.condition === 'damaged' ? QUARANTINE : src[0].location,
-                   value: Math.round((issuedValue * scaled) / issuedQty) };
+                   value: mulDiv(issuedValue, scaled, issuedQty) };
         });
       }
       case 'TRANSFER_OUT':
@@ -266,7 +294,7 @@ export class Ledger {
         return doc.lines.flatMap((l) => {
           const { scaled } = this.#base(l.item, l.qty, l.uom);
           const b = this.#bal(doc.store, loc(l), l.item);
-          const v = b.qty === 0 ? 0 : Math.round((b.value * scaled) / b.qty);
+          const v = b.qty === 0 ? 0 : mulDiv(b.value, scaled, b.qty);
           return [
             { store: doc.store, location: loc(l), item: l.item, qty: -scaled, value: -v },
             { store: doc.to, location: TRANSIT, item: l.item, qty: scaled, value: v },
@@ -277,7 +305,7 @@ export class Ledger {
           const { scaled } = this.#base(l.item, l.qty, l.uom);
           const t = this.#bal(doc.store, TRANSIT, l.item);
           if (scaled > t.qty) fail('BAD_QTY', 'receiving more than in transit');
-          const v = Math.round((t.value * scaled) / t.qty);
+          const v = mulDiv(t.value, scaled, t.qty);
           return [
             { store: doc.store, location: TRANSIT, item: l.item, qty: -scaled, value: -v },
             { store: doc.store, location: loc(l), item: l.item, qty: scaled, value: v },
@@ -290,7 +318,7 @@ export class Ledger {
           const { scaled } = this.#base(l.item, l.qty, l.uom, { signed: true });
           const b = this.#bal(doc.store, loc(l), l.item);
           return { store: doc.store, location: loc(l), item: l.item, qty: scaled,
-                   value: b.qty === 0 ? 0 : Math.round((b.value * scaled) / b.qty) };
+                   value: b.qty === 0 ? 0 : mulDiv(b.value, scaled, b.qty) };
         });
       case 'REVERSAL':
         // Quantities are exactly opposite. Value follows LED-6: stock coming back
